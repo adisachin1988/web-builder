@@ -1,1 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI Website Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* CRITICAL REQUIREMENT: Mobile View (100dvh) */
+        body { 
+            min-height: 100dvh; 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden; 
+            margin: 0;
+            background-color: #f3f4f6;
+        }
+        
+        /* Custom Scrollbars for a polished look */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .loader {
+            border: 2px solid #ffffff; border-bottom-color: transparent;
+            border-radius: 50%; display: inline-block; box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+        }
+        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="text-gray-800 font-sans antialiased">
 
+    <div class="flex flex-1 overflow-hidden w-full relative">
+
+        <div id="mobile-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden md:hidden" onclick="toggleSidebar()"></div>
+
+        <aside id="sidebar" class="w-64 bg-gray-900 text-gray-300 flex flex-col flex-shrink-0 absolute md:relative z-40 h-full transition-transform transform -translate-x-full md:translate-x-0 shadow-xl">
+            <div class="p-4 border-b border-gray-800">
+                <button onclick="createNewProject()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    New Project
+                </button>
+            </div>
+            
+            <div id="project-list" class="flex-1 overflow-y-auto p-3 space-y-1">
+                </div>
+            
+            <div class="p-4 mt-auto border-t border-gray-800">
+                <button onclick="openSettings()" class="w-full text-left text-gray-400 hover:text-white flex items-center gap-3 p-2 rounded-lg hover:bg-gray-800 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    Settings
+                </button>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col min-w-0 bg-white relative z-10 shadow-2xl">
+            
+            <header class="h-14 bg-gray-50 border-b border-gray-200 flex items-center justify-between px-4 flex-shrink-0">
+                <div class="flex items-center gap-3">
+                    <button class="md:hidden text-gray-500 hover:text-gray-800" onclick="toggleSidebar()">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    </button>
+                    <div class="flex gap-2 items-center">
+                        <div class="w-3 h-3 rounded-full bg-red-500 shadow-sm border border-red-600"></div>
+                        <div class="w-3 h-3 rounded-full bg-yellow-400 shadow-sm border border-yellow-500"></div>
+                        <div class="w-3 h-3 rounded-full bg-green-500 shadow-sm border border-green-600"></div>
+                    </div>
+                </div>
+
+                <div class="flex bg-gray-200/80 rounded-lg p-1 shadow-inner">
+                    <button id="btn-preview" onclick="switchView('preview')" class="px-5 py-1.5 rounded-md bg-white shadow-sm text-sm font-semibold text-gray-900 transition-all">Preview</button>
+                    <button id="btn-code" onclick="switchView('code')" class="px-5 py-1.5 rounded-md text-gray-500 text-sm font-semibold hover:text-gray-900 transition-all">Code</button>
+                </div>
+
+                <button onclick="downloadCode()" class="text-gray-500 hover:text-blue-600 flex items-center gap-1.5 text-sm font-semibold transition-colors px-2 py-1 rounded-md hover:bg-blue-50">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    <span class="hidden sm:inline">Download</span>
+                </button>
+            </header>
+
+            <div class="flex-1 relative overflow-hidden bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9IiNlN2U1ZTQiLz48L3N2Zz4=')] bg-white flex flex-col md:flex-row">
+                
+                <div class="flex-1 relative overflow-hidden flex flex-col">
+                    <div id="empty-state" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 p-6 text-center z-0">
+                        <svg class="w-16 h-16 mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                        <h2 class="text-xl font-bold text-gray-600 mb-2">AI Website Builder</h2>
+                        <p class="text-sm max-w-md">Type your requirements in the chat below. The AI will generate complete, rendering HTML code for you.</p>
+                    </div>
+
+                    <iframe id="preview-frame" class="w-full h-full border-0 relative z-10 hidden bg-white shadow-sm"></iframe>
+                    <pre id="code-view" class="hidden w-full h-full p-6 overflow-auto bg-gray-900 text-sm text-green-400 font-mono m-0 relative z-10"></pre>
+                </div>
+
+                <div class="w-full md:w-80 bg-gray-50 border-l border-gray-200 flex flex-col flex-shrink-0 absolute md:relative inset-y-0 right-0 transform translate-x-full md:translate-x-0 transition-transform z-20 shadow-[-10px_0_15px_-3px_rgba(0,0,0,0.05)] md:shadow-none" id="chat-panel">
+                    <div class="p-3 border-b border-gray-200 bg-white flex justify-between items-center font-semibold text-gray-700 text-sm">
+                        <span>Chat History</span>
+                        <button class="md:hidden text-gray-400 hover:text-gray-800" onclick="document.getElementById('chat-panel').classList.add('translate-x-full')">Close</button>
+                    </div>
+                    <div id="chat-history" class="flex-1 overflow-y-auto p-4 space-y-4">
+                        </div>
+                </div>
+
+            </div>
+
+            <footer class="p-3 sm:p-4 bg-white border-t border-gray-200 flex-shrink-0 z-20 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.03)] relative">
+                <div class="flex gap-2 md:gap-3 items-end max-w-5xl mx-auto">
+                    <button class="md:hidden mb-2 text-gray-400 hover:text-gray-800 p-2" onclick="document.getElementById('chat-panel').classList.remove('translate-x-full')" title="Show Chat">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                    </button>
+                    <textarea id="prompt-input" rows="1" class="w-full resize-none rounded-xl border border-gray-300 py-3.5 px-4 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 shadow-inner bg-gray-50 min-h-[52px] max-h-40 transition-all text-sm sm:text-base leading-relaxed" placeholder="Describe the website you want to build... (e.g., 'A modern landing page for a coffee shop')"></textarea>
+                    
+                    <button id="send-btn" onclick="sendMessage()" class="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-5 py-3.5 h-[52px] font-semibold flex items-center justify-center shadow-md transition-all flex-shrink-0 w-24">
+                        <span id="send-text">Send</span>
+                        <div id="send-loader" class="loader w-5 h-5 hidden"></div>
+                    </button>
+                </div>
+            </footer>
+        </main>
+    </div>
+
+    <div id="settings-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all">
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                <h3 class="text-lg font-bold text-gray-800">API Settings</h3>
+                <button onclick="closeSettings()" class="text-gray-400 hover:text-gray-800">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="p-6 space-y-5">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">API URL</label>
+                    <input type="text" id="api-url" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50" value="https://openrouter.ai/api/v1/chat/completions">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">API Key</label>
+                    <input type="password" id="api-key" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50" placeholder="sk-or-v1-...">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Model ID</label>
+                    <input type="text" id="model-id" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50" value="deepseek/deepseek-r1:free">
+                </div>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                <button onclick="closeSettings()" class="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm">Cancel</button>
+                <button onclick="saveSettings()" class="px-4 py-2 text-sm font-semibold text-white bg-gray-900 hover:bg-black rounded-lg shadow-sm">Save Config</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // SYSTEM LOGIC: Hidden Prompt constraints
+        const SYSTEM_PROMPT = `You are a web developer. Output ONLY raw HTML code containing embedded CSS and JS if needed. 
+Do not use markdown formatting like \`\`\`html. Do not include any explanations. 
+Start immediately with <!DOCTYPE html> and end with </html>.`;
+
+        // State Management
+        let settings = {
+            apiUrl: "https://openrouter.ai/api/v1/chat/completions",
+            apiKey: "",
+            model: "deepseek/deepseek-r1:free"
+        };
+        
+        let projects = [];
+        let currentProjectId = null;
+        let isGenerating = false;
+
+        // Auto-resize textarea
+        const promptInput = document.getElementById('prompt-input');
+        promptInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 160) + 'px';
+        });
+
+        // Initialize App
+        function init() {
+            const savedSettings = localStorage.getItem('aiBuilderSettings');
+            if (savedSettings) settings = { ...settings, ...JSON.parse(savedSettings) };
+            
+            const savedProjects = localStorage.getItem('aiBuilderProjects');
+            if (savedProjects) projects = JSON.parse(savedProjects);
+            
+            const savedCurrentId = localStorage.getItem('aiBuilderCurrentId');
+            if (savedCurrentId && projects.find(p => p.id === savedCurrentId)) {
+                currentProjectId = savedCurrentId;
+            } else if (projects.length > 0) {
+                currentProjectId = projects[0].id;
+            } else {
+                createNewProject();
+            }
+
+            renderProjectList();
+            loadCurrentProject();
+
+            // If no API key, prompt user
+            if (!settings.apiKey) openSettings();
+        }
+
+        // Persistence
+        function saveState() {
+            localStorage.setItem('aiBuilderProjects', JSON.stringify(projects));
+            localStorage.setItem('aiBuilderCurrentId', currentProjectId);
+            renderProjectList();
+        }
+
+        function createNewProject() {
+            const newProj = {
+                id: Date.now().toString(),
+                name: "New Project " + (projects.length + 1),
+                messages: [],
+                code: ""
+            };
+            projects.unshift(newProj);
+            currentProjectId = newProj.id;
+            saveState();
+            loadCurrentProject();
+            if(window.innerWidth < 768) toggleSidebar(); // auto-close on mobile
+        }
+
+        function loadCurrentProject() {
+            const proj = projects.find(p => p.id === currentProjectId);
+            if(!proj) return;
+            
+            updateWorkspace(proj.code);
+            renderChatHistory();
+            switchView(document.getElementById('code-view').classList.contains('hidden') ? 'preview' : 'code');
+        }
+
+        function switchProject(id) {
+            currentProjectId = id;
+            saveState();
+            loadCurrentProject();
+            if(window.innerWidth < 768) toggleSidebar();
+        }
+
+        function renderProjectList() {
+            const list = document.getElementById('project-list');
+            list.innerHTML = '';
+            projects.forEach(p => {
+                const isActive = p.id === currentProjectId;
+                const btn = document.createElement('button');
+                btn.className = `w-full text-left px-3 py-2.5 rounded-lg text-sm truncate transition-colors ${isActive ? 'bg-gray-800 text-white font-medium shadow-sm border border-gray-700' : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'}`;
+                btn.innerText = p.name;
+                btn.onclick = () => switchProject(p.id);
+                list.appendChild(btn);
+            });
+        }
+
+        function renderChatHistory() {
+            const proj = projects.find(p => p.id === currentProjectId);
+            const container = document.getElementById('chat-history');
+            container.innerHTML = '';
+            
+            if (!proj.messages || proj.messages.length === 0) {
+                container.innerHTML = `<div class="text-xs text-center text-gray-400 mt-4">No messages yet.</div>`;
+                return;
+            }
+
+            proj.messages.forEach(msg => {
+                if (msg.role === 'user') {
+                    container.innerHTML += `
+                        <div class="flex flex-col items-end w-full mb-3">
+                            <span class="text-[10px] text-gray-400 font-semibold mb-0.5 px-1 uppercase tracking-wider">You</span>
+                            <div class="bg-blue-600 text-white px-4 py-2.5 rounded-2xl rounded-tr-sm text-sm max-w-[90%] shadow-sm leading-relaxed">${escapeHtml(msg.content)}</div>
+                        </div>`;
+                } else if (msg.role === 'assistant') {
+                    container.innerHTML += `
+                        <div class="flex flex-col items-start w-full mb-3">
+                            <span class="text-[10px] text-gray-400 font-semibold mb-0.5 px-1 uppercase tracking-wider">AI Builder</span>
+                            <div class="bg-white border border-gray-200 text-gray-800 px-4 py-2.5 rounded-2xl rounded-tl-sm text-sm max-w-[90%] shadow-sm flex items-center gap-2">
+                                <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                Code Updated
+                            </div>
+                        </div>`;
+                }
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function updateWorkspace(code) {
+            const frame = document.getElementById('preview-frame');
+            const codeView = document.getElementById('code-view');
+            const emptyState = document.getElementById('empty-state');
+            
+            if (code && code.trim() !== '') {
+                emptyState.classList.add('hidden');
+                frame.classList.remove('hidden');
+                frame.srcdoc = code;
+                codeView.textContent = code;
+            } else {
+                emptyState.classList.remove('hidden');
+                frame.classList.add('hidden');
+                frame.srcdoc = '';
+                codeView.textContent = '';
+            }
+        }
+
+        function switchView(mode) {
+            const frame = document.getElementById('preview-frame');
+            const codeView = document.getElementById('code-view');
+            const emptyState = document.getElementById('empty-state');
+            const btnPreview = document.getElementById('btn-preview');
+            const btnCode = document.getElementById('btn-code');
+            
+            const proj = projects.find(p => p.id === currentProjectId);
+            const hasCode = proj && proj.code && proj.code.trim() !== '';
+
+            // Reset buttons
+            btnPreview.className = "px-5 py-1.5 rounded-md text-gray-500 text-sm font-semibold hover:text-gray-900 transition-all";
+            btnCode.className = "px-5 py-1.5 rounded-md text-gray-500 text-sm font-semibold hover:text-gray-900 transition-all";
+
+            if (mode === 'preview') {
+                btnPreview.classList.add('bg-white', 'shadow-sm', 'text-gray-900');
+                btnPreview.classList.remove('text-gray-500');
+                codeView.classList.add('hidden');
+                if (hasCode) frame.classList.remove('hidden');
+            } else {
+                btnCode.classList.add('bg-white', 'shadow-sm', 'text-gray-900');
+                btnCode.classList.remove('text-gray-500');
+                frame.classList.add('hidden');
+                if (hasCode) codeView.classList.remove('hidden');
+            }
+        }
+
+        // --- CRITICAL REQUIREMENT 2: ANTI-CRASH JSON LOGIC ---
+        async function sendMessage() {
+            if (isGenerating) return;
+            const input = document.getElementById('prompt-input');
+            const prompt = input.value.trim();
+            if (!prompt) return;
+
+            if (!settings.apiKey) {
+                alert("Please configure your API Key in Settings first.");
+                openSettings();
+                return;
+            }
+
+            const proj = projects.find(p => p.id === currentProjectId);
+            
+            // Set first prompt as project name
+            if (proj.messages.length === 0) {
+                proj.name = prompt.length > 25 ? prompt.substring(0, 25) + '...' : prompt;
+                renderProjectList();
+            }
+
+            // Update UI
+            proj.messages.push({ role: 'user', content: prompt });
+            input.value = '';
+            input.style.height = 'auto';
+            renderChatHistory();
+            setLoading(true);
+
+            // Prepare Payload
+            const payload = {
+                model: settings.model,
+                messages: [
+                    { role: 'system', content: SYSTEM_PROMPT },
+                    ...proj.messages
+                ]
+            };
+
+            try {
+                const response = await fetch(settings.apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${settings.apiKey}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                // --- STRICT IMPLEMENTATION OF RULE 2 ---
+                // First, await response.text()
+                const text = await response.text();
+                
+                // If !response.ok, alert text and STOP
+                if (!response.ok) {
+                    alert("API Error: " + text);
+                    setLoading(false);
+                    return; 
+                }
+                
+                // Only then JSON.parse(text)
+                const data = JSON.parse(text);
+                // ---------------------------------------
+
+                let reply = data.choices[0].message.content;
+                
+                // Clean markdown if the AI stubbornly adds it
+                let cleanCode = reply;
+                const match = reply.match(/```(?:html)?\n([\s\S]*?)\n```/i);
+                if (match) {
+                    cleanCode = match[1];
+                } else {
+                    cleanCode = reply.replace(/^```html/i, '').replace(/```$/i, '').trim();
+                }
+
+                // Save and render
+                proj.code = cleanCode;
+                proj.messages.push({ role: 'assistant', content: "Generated successfully." }); // Store tiny summary to save context window size
+                
+                saveState();
+                loadCurrentProject();
+
+            } catch (error) {
+                alert("Network or Parsing Error: " + error.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        function setLoading(isLoading) {
+            isGenerating = isLoading;
+            const btn = document.getElementById('send-btn');
+            const text = document.getElementById('send-text');
+            const loader = document.getElementById('send-loader');
+            const input = document.getElementById('prompt-input');
+            
+            if (isLoading) {
+                btn.disabled = true;
+                btn.classList.add('opacity-75', 'cursor-not-allowed');
+                text.classList.add('hidden');
+                loader.classList.remove('hidden');
+                input.disabled = true;
+            } else {
+                btn.disabled = false;
+                btn.classList.remove('opacity-75', 'cursor-not-allowed');
+                text.classList.remove('hidden');
+                loader.classList.add('hidden');
+                input.disabled = false;
+                input.focus();
+            }
+        }
+
+        function downloadCode() {
+            const proj = projects.find(p => p.id === currentProjectId);
+            if (!proj || !proj.code) {
+                alert("No code generated yet to download.");
+                return;
+            }
+            const blob = new Blob([proj.code], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'index.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Settings Modal Handlers
+        function openSettings() {
+            document.getElementById('api-url').value = settings.apiUrl;
+            document.getElementById('api-key').value = settings.apiKey;
+            document.getElementById('model-id').value = settings.model;
+            document.getElementById('settings-modal').classList.remove('hidden');
+        }
+
+        function closeSettings() {
+            document.getElementById('settings-modal').classList.add('hidden');
+        }
+
+        function saveSettings() {
+            settings.apiUrl = document.getElementById('api-url').value.trim() || "https://openrouter.ai/api/v1/chat/completions";
+            settings.apiKey = document.getElementById('api-key').value.trim();
+            settings.model = document.getElementById('model-id').value.trim() || "deepseek/deepseek-r1:free";
+            
+            localStorage.setItem('aiBuilderSettings', JSON.stringify(settings));
+            closeSettings();
+        }
+
+        // Mobile Sidebar Toggle
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobile-overlay');
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+        }
+
+        // Utility
+        function escapeHtml(unsafe) {
+            return unsafe
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        }
+
+        // Enter key to send
+        document.getElementById('prompt-input').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // Run Init
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
